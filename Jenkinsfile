@@ -14,11 +14,26 @@ pipeline {
             }
             stage('build and scan') {
                 steps {
-                  withsonarqubeEnv('SONAR') {
+                 withCredentials([string(credentialsId: 'sonar_id', variable: 'SONAR_TOKEN')]) {
+                 withsonarqubeEnv('SONAR') {
+                    sh '''mvn package sonar:sonar \
+                           -Dsonar.projectkey=soumya1312shekar_java \
+                           -Dsonar.organization=soumya1312shekar-1 \
+                           -Dsonar.host.url=https://sonarcloud.io/ \
+                           -Dsonar.login=$SONAR_TOKEN'''
 
-                  }    
-                    sh 'mvn package sonar:sonar'
+                 
+
+
+
+ 
+
+               
+                     
+                 }
+
                 }
+            }
             }
 
         }
