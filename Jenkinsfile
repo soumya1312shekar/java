@@ -1,44 +1,40 @@
 pipeline {
     agent { label 'spc' }
-    
+
     tools {
-        jdk 'jdk-25' 
+        jdk 'jdk-17'
+        maven 'Maven3'
     }
 
     environment {
-        // Increase memory to prevent OutOfMemory errors during the scan
         MAVEN_OPTS = '-Xmx1024m'
     }
 
-    triggers {
-        pollSCM('* * * * *')
-    }
-    
     stages {
-        stage('git checkout') {
+        stage('Checkout') {
             steps {
-                git url : 'https://github.com/soumya1312shekar/java.git',
+                git url: 'https://github.com/soumya1312shekar/java.git',
                     branch: 'main'
             }
         }
-        
-        stage('build and scan') {
+
+        stage('Build & Sonar Scan') {
             steps {
                 withCredentials([string(credentialsId: 'sonar_id', variable: 'SONAR_TOKEN')]) {
                     withSonarQubeEnv('SONAR') {
-                        // Added -DskipTests, -Dspring-javaformat.skip, and -Dcheckstyle.skip
-                        sh '''mvn package sonar:sonar \
-                               -DskipTests \
-                               -Dspring-javaformat.skip=true \
-                               -Dcheckstyle.skip=true \
-                               -Dsonar.projectKey=soumya1312shekar_java \
-                               -Dsonar.organization=soumya1312shekar \
-                               -Dsonar.host.url=https://sonarcloud.io \
-                               -Dsonar.login=$SONAR_TOKEN'''
+                        sh '''
+                        mvn clean verify sonar:sonar \
+                        -DskipTests \
+                        -Dsonar.projectKey=soumya1312shekar_java \
+                        -Dsonar.organization=YOUR_REAL_ORG_KEY \
+                        -Dsonar.host.url=https://sonarcloud.io \
+                        -Dsonar.login=$SONAR_TOKEN
+                        '''
                     }
                 }
             }
         }
     }
 }
+   
 
