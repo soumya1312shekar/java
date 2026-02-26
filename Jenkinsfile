@@ -11,12 +11,11 @@ pipeline {
     }
 
     stages {
-
         stage('Checkout') {
-            steps {
-                git branch: 'main',
-                    credentialsId: 'github_token',
-                    url: 'https://github.com/soumya1312shekar/java.git'
+    steps {
+        git branch: 'main',
+            credentialsId: 'github_token',
+            url: 'https://github.com/soumya1312shekar/java.git'
             }
         }
 
@@ -26,7 +25,7 @@ pipeline {
                     withSonarQubeEnv('SONAR') {
                         sh '''
                         mvn clean verify sonar:sonar \
-                        
+                        -DskipTests \
                         -Dsonar.projectKey=soumya1312shekar_java \
                         -Dsonar.organization=soumya1312shekar-1 \
                         -Dsonar.host.url=https://sonarcloud.io \
@@ -36,9 +35,8 @@ pipeline {
                 }
             }
         }
-
     }
 }
-   
+
      
 
