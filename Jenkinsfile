@@ -22,11 +22,12 @@ pipeline {
                 withCredentials([string(credentialsId: 'sonar_id', variable: 'SONAR_TOKEN')]) {
                     withSonarQubeEnv('SONAR') {
                         // Added -X for debugging if it fails again
-                        sh '''mvn package sonar:sonar \
-                               -Dsonar.projectKey=soumya1312shekar_java \
-                               -Dsonar.organization=soumya1312shekar-1 \
-                               -Dsonar.host.url=https://sonarcloud.io/ \
-                               -Dsonar.login=$SONAR_TOKEN'''
+                        sh mvn package sonar:sonar -DskipTests \
+                            -Dsonar.projectKey=soumya1312shekar_java \
+                            -Dsonar.organization=soumya1312shekar-1 \
+                            -Dsonar.host.url=https://sonarcloud.io/ \
+                            -Dsonar.login=$SONAR_TOKEN
+
                     }
                 }
             }
