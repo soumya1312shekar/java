@@ -3,7 +3,7 @@ pipeline {
     
     // Add the tools block here
     tools {
-        jdk 'java-25' // This name must match the name in Manage Jenkins -> Tools
+        jdk 'jdk-25' // This name must match the name in Manage Jenkins -> Tools
     }
 
     triggers {
