@@ -12,9 +12,10 @@ pipeline {
 
     stages {
         stage('Checkout') {
-            steps {
-                git url: 'https://github.com/soumya1312shekar/java.git',
-                    branch: 'main'
+    steps {
+        git branch: 'main',
+            credentialsId: 'github_token',
+            url: 'https://github.com/soumya1312shekar/java.git'
             }
         }
 
