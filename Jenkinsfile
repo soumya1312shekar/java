@@ -11,11 +11,12 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout') {
-    steps {
-        git branch: 'main',
-            credentialsId: 'github_token',
-            url: 'https://github.com/soumya1312shekar/java.git'
+            steps {
+                git branch: 'main',
+                    credentialsId: 'github_token',
+                    url: 'https://github.com/soumya1312shekar/java.git'
             }
         }
 
@@ -35,7 +36,21 @@ pipeline {
                 }
             }
         }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    script {
+                        def qg = waitForQualityGate()
+                        if (qg.status != 'OK') {
+                            error "Pipeline aborted due to Quality Gate failure: ${qg.status}"
+                        }
+                    }
+                }
+            }
+        }
     }
 }
+         
    
 
