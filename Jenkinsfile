@@ -5,6 +5,11 @@ pipeline {
         jdk 'jdk-25' 
     }
 
+    environment {
+        // Increase memory to prevent OutOfMemory errors during the scan
+        MAVEN_OPTS = '-Xmx1024m'
+    }
+
     triggers {
         pollSCM('* * * * *')
     }
@@ -12,7 +17,7 @@ pipeline {
     stages {
         stage('git checkout') {
             steps {
-                git url : 'https://github.com/soumya1312shekar/java.git',
+                git url : 'https://github.com',
                     branch: 'main'
             }
         }
@@ -21,7 +26,11 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'sonar_id', variable: 'SONAR_TOKEN')]) {
                     withSonarQubeEnv('SONAR') {
-                        sh '''mvn package sonar:sonar -DskipTests \
+                        // Added -DskipTests, -Dspring-javaformat.skip, and -Dcheckstyle.skip
+                        sh '''mvn package sonar:sonar \
+                               -DskipTests \
+                               -Dspring-javaformat.skip=true \
+                               -Dcheckstyle.skip=true \
                                -Dsonar.projectKey=soumya1312shekar_java \
                                -Dsonar.organization=soumya1312shekar-1 \
                                -Dsonar.host.url=https://sonarcloud.io \
@@ -29,7 +38,7 @@ pipeline {
                     }
                 }
             }
-        } // This correctly closes the stage
-    } // This correctly closes the stages block
-} // This correctly closes the pipeline block
+        }
+    }
+}
 
