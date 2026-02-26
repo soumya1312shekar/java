@@ -17,7 +17,7 @@ pipeline {
     stages {
         stage('git checkout') {
             steps {
-                git url : 'https://github.com',
+                git url : 'https://github.com/soumya1312shekar/java.git',
                     branch: 'main'
             }
         }
