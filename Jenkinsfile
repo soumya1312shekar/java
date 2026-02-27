@@ -1,49 +1,40 @@
 pipeline {
-    agent { label 'spc' }
-
-    tools {
-        jdk 'jdk-17'
-        maven 'Maven3'
+    agent{label 'spc'}
+    triggers{
+        pollSCM('* * * * *')
     }
-
-    environment {
-        MAVEN_OPTS = '-Xmx1024m'
-    }
-
     stages {
-        stage('Checkout') {
-    steps {
-        git branch: 'main',
-            credentialsId: 'github_token',
-            url: 'https://github.com/soumya1312shekar/java.git'
+        stage ('git checkout'){
+            steps {
+                git url:'https://github.com/soumya1312shekar/java.git',
+                    branch:'main'
             }
         }
+        stage ('build and scan'){
+            steps{
+                 withCredentials([string(credentialsId:'sonar_sonar', variable:'SONAR_TOKEN')]){
+                    withSonarQubeEnv('SONAR'){
+                        sh """ mvn package sonar:sonar \
+                            -Dsonar.projectKey=soumya1312shekar_java \
+                            -Dsonar.organization=soumya1312shekar-1 \
+                            -Dsonar.host.url=https://sonarcloud.io/ \
+                            -Dsonar.login=$SONAR_TOKEN  """
 
-        stage('Build & Sonar Scan') {
-            steps {
-                withCredentials([string(credentialsId: 'sonar_sonar', variable: 'SONAR_TOKEN')]) {
-                    withSonarQubeEnv('SONAR') {
-                        sh '''
-                        mvn clean verify sonar:sonar \
-                        -DskipTests \
-                        -Dsonar.projectKey=soumya1312shekar_java \
-                        -Dsonar.organization=soumya1312shekar-1 \
-                        -Dsonar.host.url=https://sonarcloud.io \
-                        -Dsonar.login=$SONAR_TOKEN
-                        '''
                     }
-                }
+                
             }
+                
+            }
+
         }
     }
+
     post {
         always{
             archiveArtifacts artifacts: '**/*.jar'
             junit '**/surefire-reports/*.xml'
-}
+
+        }
     }
 }
-
-
-     
 
