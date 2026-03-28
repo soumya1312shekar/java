@@ -1,5 +1,5 @@
 pipeline {
-    agent { label 'mynginixcontainer' }
+    agent { label 'spc' }
     
     triggers {
         pollSCM('* * * * *')
