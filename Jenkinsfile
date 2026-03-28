@@ -4,19 +4,17 @@ pipeline {
     triggers {
         pollSCM('* * * * *')
     }
-
+ 
     stages {
-        stage('git checkout') {   
+        stage('Git Checkout') {   
             steps {
-                git url: 'https://github.com',
-                    branch: 'main'
+                git url: 'https://github.com', branch: 'main'
             }
         }
 
-        stage('build and scan') {
+        stage('Build and Scan') {
             steps {
                 withCredentials([string(credentialsId: 'sonar_sonar', variable: 'SONAR_TOKEN')]) {
-                    // Use double quotes for the sh block to allow variable expansion
                     withSonarQubeEnv('SONAR') {
                         sh """
                         mvn package sonar:sonar \
@@ -30,24 +28,32 @@ pipeline {
             }
         }
 
-        stage('docker login & push') {
+        stage('Docker Hub Login & Push') {
             steps {
-                script {
-                    withCredentials([usernamePassword(
-                        credentialsId: 'd3d6bc96-8f86-4e2e-acf6-ccb785b65c88',
-                        usernameVariable: 'DOCKER_USER',
-                        passwordVariable: 'DOCKER_PASS'
-                    )]) {
-                        // Login to Docker
-                        sh "echo ${DOCKER_PASS} | docker login -u ${DOCKER_USER} --password-stdin"
-                        
-                        // Build the image (Assumes Dockerfile is in root)
-                        sh "docker build -t ${DOCKER_USER}/java-app:${env.BUILD_ID} ."
-                        
-                        // Push the image
-                        sh "docker push ${DOCKER_USER}/java-app:${env.BUILD_ID}"
-                    }
+                // Securely use Docker Hub credentials via environment variables
+                withCredentials([usernamePassword(
+                    credentialsId: 'd3d6bc96-8f86-4e2e-acf6-ccb785b65c88',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh """
+                    echo ${DOCKER_PASS} | docker login -u ${DOCKER_USER} --password-stdin
+                    docker build -t ${DOCKER_USER}/java-app:${env.BUILD_ID} .
+                    docker push ${DOCKER_USER}/java-app:${env.BUILD_ID}
+                    """
                 }
+            }
+        }
+
+        stage('ECR Push and Hub Pull') {
+            steps {
+                // Moved from nested position into its own stage
+                sh """
+                docker image pull nginx:1.30
+                aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 271071982991.dkr.ecr.ap-south-1.amazonaws.com
+                docker tag nginx:1.30 ://271071982991.dkr.ecr.ap-south-1.amazonaws.com
+                docker push ://271071982991.dkr.ecr.ap-south-1.amazonaws.com
+                """
             }
         }
     }
@@ -56,9 +62,8 @@ pipeline {
         always {
             archiveArtifacts artifacts: '**/*.jar'
             junit '**/surefire-reports/*.xml'
-            
-            // Clean up: Logout of Docker after build
-            sh "docker logout"
+            // Cleanup: Logout to clear credentials from the agent
+            sh "docker logout || true"
         }
     }
 }
