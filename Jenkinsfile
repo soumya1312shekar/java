@@ -3,8 +3,8 @@ pipeline {
     
     environment {
         ECR_REGISTRY = "271071982991.dkr.ecr.ap-south-1.amazonaws.com"
-        REPO_NAME   = "dev/spcimage"
-        REGION      = "ap-south-1"
+        REPO_NAME    = "dev/spcimage"
+        REGION       = "ap-south-1"
     }
     
     triggers {
@@ -32,16 +32,25 @@ pipeline {
             }
         }
 
-      stage('docker image push to ecr and pulling from dockerhub') {
+        stage('Docker Pull & Push to ECR') {
     steps {
         sh """
-        docker pull nginx:1.25
-        aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 271071982991.dkr.ecr.ap-south-1.amazonaws.com
-        docker nginix:1.25 271071982991.dkr.ecr.ap-south-1.amazonaws.com/dev/spcimage:latest
-        docker push 271071982991.dkr.ecr.ap-south-1.amazonaws.com/dev/spcimage:latest
+            # Pull the official image
+            docker pull nginx:1.25
+            
+            # Authenticate with AWS ECR
+            aws ecr get-login-password --region ap-south-1 | \
+            docker login --username AWS --password-stdin 271071982991.dkr.ecr.ap-south-1.amazonaws.com
+            
+            # Tag the image (Fixed typo: nginix -> nginx)
+            docker tag nginx:1.25 271071982991.dkr.ecr.ap-south-1.amazonaws.com/dev/spcimage:latest
+            
+            # Push to your private repo
+            docker push 271071982991.dkr.ecr.ap-south-1.amazonaws.com/dev/spcimage:latest
         """
     }
 }
+
     
     post {
         always {
