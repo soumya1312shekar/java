@@ -34,18 +34,18 @@ pipeline {
             }
         }
 
-        stage('Deploy to K8s for Dev') {
+        stage('deploy to k8s for dev') {
             steps {
+                // Using the 'file' credential type correctly
                 withCredentials([file(credentialsId: 'myeks', variable: 'KUBECONFIG')]) {
                     sh """
-                    # Critical: Export the KUBECONFIG variable so kubectl finds the file
                     export KUBECONFIG=${KUBECONFIG}
                     kubectl apply -f deploy-k8s/
                     """
                 }
             }
         }
-    }
+    } // End of stages
 
     post {
         always {
