@@ -2,7 +2,6 @@ pipeline {
     agent { label 'spc' }
     
     triggers {
-        // Polls every minute (consider using Webhooks for better performance)
         pollSCM('* * * * *')
     }
  
@@ -15,7 +14,6 @@ pipeline {
 
         stage('Build and Scan') {
             steps {
-                // withSonarQubeEnv usually handles the URL and basic auth automatically
                 withCredentials([string(credentialsId: 'sonar_sonar', variable: 'SONAR_TOKEN')]) {
                     withSonarQubeEnv('SONAR') {
                         sh """
@@ -32,7 +30,6 @@ pipeline {
 
         stage('Docker Push to ECR') {
             steps {
-                // Use a script block for cleaner shell execution
                 sh """
                 # Pull the base image
                 docker image pull nginx:1.25
@@ -47,17 +44,18 @@ pipeline {
             }
         }
 
-        stage('Deploy to K8s') {
+        stage('deploy to k8s for dev') {
             steps {
-                // Added a directory check to prevent the stage from failing if folder is missing
-                sh 'kubectl apply -f deploy-k8s/.'
+                // Securely uses your EKS credentials
+                withKubeConfig([credentialsId: 'myeks']) {
+                    sh 'kubectl apply -f deploy-k8s/.'
+                }
             }
         }
-    }
+    } // End of stages
 
     post {
         always {
-            // Cleans up workspace artifacts and logs out of ECR
             archiveArtifacts artifacts: '**/*.jar', allowEmptyArchive: true
             junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
             sh "docker logout 271071982991.dkr.ecr.ap-south-1.amazonaws.com || true"
