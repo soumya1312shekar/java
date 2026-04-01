@@ -1,18 +1,6 @@
 pipeline {
     agent { label 'spc' }
     
-    environment {
-        // AWS ECR Configuration
-        AWS_ACCOUNT_ID = '271071982991'
-        AWS_REGION     = 'ap-south-1'
-        ECR_REPO_NAME  = 'java-app' // Ensure this repo is created in ECR Console
-        ECR_REGISTRY   = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-        
-        // SonarCloud Configuration
-        SONAR_ORG      = 'soumya1312shekar-1'
-        SONAR_PROJECT  = 'soumya1312shekar_java'
-    }
-
     triggers {
         pollSCM('* * * * *')
     }
@@ -20,19 +8,18 @@ pipeline {
     stages {
         stage('Git Checkout') {   
             steps {
-                git url: 'https://github.com', branch: 'main'
+                git url: 'https://github.com/soumya1312shekar/java.git', branch: 'main'
             }
         }
 
         stage('Build and Scan') {
             steps {
-                // 'sonar_sonar' must be a 'Secret text' type credential in Jenkins
                 withCredentials([string(credentialsId: 'sonar_sonar', variable: 'SONAR_TOKEN')]) {
                     withSonarQubeEnv('SONAR') {
                         sh """
                         mvn clean package sonar:sonar \
-                        -Dsonar.projectKey=${SONAR_PROJECT} \
-                        -Dsonar.organization=${SONAR_ORG} \
+                        -Dsonar.projectKey=soumya1312shekar_java \
+                        -Dsonar.organization=soumya1312shekar-1 \
                         -Dsonar.host.url=https://sonarcloud.io \
                         -Dsonar.login=${SONAR_TOKEN}
                         """
@@ -41,7 +28,7 @@ pipeline {
             }
         }
 
-        stage('Docker Hub Push') {
+        stage('Docker Hub Login & Push') {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: '656587bb-ceb1-4f1a-918c-02aa85dcfd46',
@@ -59,14 +46,20 @@ pipeline {
 
         stage('ECR Push') {
             steps {
-                sh """
-                # Authenticate to AWS ECR
-                aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
-                
-                # Tag and Push to ECR (Fixed pathing)
-                docker tag ${DOCKER_USER}/java-app:${BUILD_NUMBER} ${ECR_REGISTRY}/${ECR_REPO_NAME}:latest
-                docker push ${ECR_REGISTRY}/${ECR_REPO_NAME}:latest
-                """
+                script {
+                    // FIXED: Removed '://' and added the specific repository name
+                    def ecrRegistry = "271071982991.dkr.ecr.ap-south-1.amazonaws.com"
+                    def repoName = "java-app" // Make sure this matches your ECR repo name
+                    
+                    sh """
+                    docker image pull nginx:1.25
+                    aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${ecrRegistry}
+                    
+                    # Tagging with the full ECR path
+                    docker tag nginx:1.25 ${ecrRegistry}/${repoName}:latest
+                    docker push ${ecrRegistry}/${repoName}:latest
+                    """
+                }
             }
         }
     }
@@ -74,7 +67,6 @@ pipeline {
     post {
         always {
             archiveArtifacts artifacts: 'target/*.jar', allowEmptyArchive: true
-            sh "docker logout ${ECR_REGISTRY} || true"
             sh "docker logout || true"
         }
     }
