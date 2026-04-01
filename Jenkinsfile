@@ -25,11 +25,12 @@ pipeline {
         stage('Docker Push to ECR') {
             steps {
                 sh """
-                aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ://amazonaws.com
+                # Fixed ECR URL with Account ID and Region
+                aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 271071982991.dkr.ecr.ap-south-1.amazonaws.com
                 
                 docker pull nginx:1.25
-                docker tag nginx:1.25 ://amazonaws.com/dev/spcimage:latest
-                docker push ://amazonaws.com/dev/spcimage:latest
+                docker tag nginx:1.25 271071982991.dkr.ecr.ap-south-1.amazonaws.com/dev/spcimage:latest
+                docker push 271071982991.dkr.ecr.ap-south-1.amazonaws.com/dev/spcimage:latest
                 """
             }
         }
@@ -39,8 +40,8 @@ pipeline {
                 withCredentials([file(credentialsId: 'myeks', variable: 'KUBECONFIG')]) {
                     sh '''
                         export KUBECONFIG=$KUBECONFIG
-                        # Use -f . to apply all files in the current folder if deploy-k8s is missing
-                        kubectl apply -f . 
+                        # Applying manifests from the deploy-k8s folder
+                        kubectl apply -f deploy-k8s/
                     '''
                 }
             }
@@ -53,7 +54,8 @@ pipeline {
             junit allowEmptyResults: true, testResults: '**/target/surefire-reports/*.xml'
         }
         cleanup {
-            sh "docker logout ://amazonaws.com || true"
+            # Fixed logout URL
+            sh "docker logout 271071982991.dkr.ecr.ap-south-1.amazonaws.com || true"
             cleanWs()
         }
     }
