@@ -2,8 +2,7 @@ pipeline {
     agent { label 'spc' }
     
     environment {
-        // Defining this here makes it available in ALL stages and the post section
-        ECR_REGISTRY = "271071982991.dkr.ecr.ap-south-1.amazonaws.com"
+        ECR_REGISTRY = "://amazonaws.com"
         REPO_NAME = "dev/spcimage"
     }
     
@@ -12,6 +11,8 @@ pipeline {
     }
  
     stages {
+        // NOTE: You can remove this stage entirely because Jenkins already 
+        // does 'Declarative: Checkout SCM' automatically at the start.
         stage('Git Checkout') {   
             steps {
                 git url: 'https://github.com/soumya1312shekar/java.git', branch: 'main'
@@ -21,13 +22,14 @@ pipeline {
         stage('Build and Scan') {
             steps {
                 withCredentials([string(credentialsId: 'sonar_sonar', variable: 'SONAR_TOKEN')]) {
-                    sh """
-                    mvn clean package sonar:sonar \
-                    -Dsonar.projectKey=soumya1312shekar_java \
-                    -Dsonar.organization=soumya1312shekar-1 \
-                    -Dsonar.host.url=https://sonarcloud.io \
-                    -Dsonar.login=${SONAR_TOKEN}
-                    """
+                    // Changed to single quotes (''') and used $SONAR_TOKEN for security
+                    sh '''
+                        mvn clean package sonar:sonar \
+                        -Dsonar.projectKey=soumya1312shekar_java \
+                        -Dsonar.organization=soumya1312shekar-1 \
+                        -Dsonar.host.url=https://sonarcloud.io \
+                        -Dsonar.login=$SONAR_TOKEN
+                    '''
                 }
             }
         }
@@ -56,13 +58,8 @@ pipeline {
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
                     sh """
-                        # 1. Login to ECR (Always uses 'AWS' as username)
                         aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${ECR_REGISTRY}
-                        
-                        # 2. Tag the image built in the previous stage for ECR
                         docker tag ${DOCKER_USER}/java-app:${BUILD_NUMBER} ${ECR_REGISTRY}/${REPO_NAME}:latest
-                        
-                        # 3. Push to ECR
                         docker push ${ECR_REGISTRY}/${REPO_NAME}:latest
                     """
                 }
@@ -73,7 +70,6 @@ pipeline {
     post {
         always {
             archiveArtifacts artifacts: 'target/*.jar', allowEmptyArchive: true
-            // Use the environment variable to logout cleanly
             sh "docker logout ${ECR_REGISTRY} || true"
             sh "docker logout || true"
         }
