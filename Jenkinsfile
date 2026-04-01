@@ -28,22 +28,22 @@ pipeline {
             }
         }
 
-        stage('Docker Hub Login & Push') {
-            steps {
-                // Ensure this ID matches your 'Username with password' credential in Jenkins
-                withCredentials([usernamePassword(
-                    credentialsId: '656587bb-ceb1-4f1a-918c-02aa85dcfd46',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-                    sh """
-                    echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
-                    docker build -t ${DOCKER_USER}/java-app:${BUILD_NUMBER} .
-                    docker push ${DOCKER_USER}/java-app:${BUILD_NUMBER}
-                    """
-                }
-            }
+       stage('Docker Hub Login & Push') {
+    steps {
+        withCredentials([usernamePassword(
+            credentialsId: '656587bb-ceb1-4f1a-918c-02aa85dcfd46', 
+            usernameVariable: 'DOCKER_USER', 
+            passwordVariable: 'DOCKER_PASS'
+        )]) {
+            sh '''
+                echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                docker build -t "$DOCKER_USER/java-app:$BUILD_NUMBER" .
+                docker push "$DOCKER_USER/java-app:$BUILD_NUMBER"
+            '''
         }
+    }
+}
+
 
         stage('ECR Push') {
             steps {
