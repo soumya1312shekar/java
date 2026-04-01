@@ -31,28 +31,26 @@ pipeline {
         stage('Docker Push to ECR') {
             steps {
                 sh """
-                # Pull the base image
-                docker image pull nginx:1.25
-                
                 # Login to AWS ECR
                 aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 271071982991.dkr.ecr.ap-south-1.amazonaws.com
                 
-                # Tag and Push
+                # Pull, Tag, and Push
+                docker image pull nginx:1.25
                 docker tag nginx:1.25 271071982991.dkr.ecr.ap-south-1.amazonaws.com/dev/spcimage:latest
                 docker push 271071982991.dkr.ecr.ap-south-1.amazonaws.com/dev/spcimage:latest
                 """
             }
         }
 
-        stage('deploy to k8s for dev') {
+        stage('Deploy to K8s') {
             steps {
-                // Securely uses your EKS credentials
-                withCredentials([credentialsId: 'myeks']) {
+                // Corrected formatting for the KubeConfig block
+                withKubeConfig([credentialsId: 'myeks']) {
                     sh 'kubectl apply -f deploy-k8s/.'
                 }
             }
         }
-    } // End of stages
+    } // Correctly closes the stages block
 
     post {
         always {
