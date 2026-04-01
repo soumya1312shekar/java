@@ -1,6 +1,12 @@
 pipeline {
     agent { label 'spc' }
     
+    environment {
+        // Defining this here makes it available in ALL stages and the post section
+        ECR_REGISTRY = "271071982991.dkr.ecr.ap-south-1.amazonaws.com"
+        REPO_NAME = "dev/spcimage"
+    }
+    
     triggers {
         pollSCM('* * * * *')
     }
@@ -28,7 +34,6 @@ pipeline {
 
         stage('Docker Hub Login & Push') {
             steps {
-                // Re-using your specific credential ID
                 withCredentials([usernamePassword(
                     credentialsId: '656587bb-ceb1-4f1a-918c-02aa85dcfd46', 
                     usernameVariable: 'DOCKER_USER', 
@@ -45,27 +50,21 @@ pipeline {
 
         stage('ECR Push') {
             steps {
-                // You must wrap this in withCredentials to access DOCKER_USER again
                 withCredentials([usernamePassword(
                     credentialsId: '656587bb-ceb1-4f1a-918c-02aa85dcfd46', 
                     usernameVariable: 'DOCKER_USER', 
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    script {
-                        def ecrRegistry = "271071982991.dkr.ecr.ap-south-1.amazonaws.com"
-                        def repoName = "dev/spcimage" // Updated to match your image instructions
+                    sh """
+                        # 1. Login to ECR (Always uses 'AWS' as username)
+                        aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${ECR_REGISTRY}
                         
-                        sh """
-                        # 1. Login to ECR (Username is ALWAYS 'AWS' for ECR)
-                        aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${ecrRegistry}
-                        
-                        # 2. Tag the existing local image for ECR
-                        docker tag ${DOCKER_USER}/java-app:${BUILD_NUMBER} ${ecrRegistry}/${repoName}:latest
+                        # 2. Tag the image built in the previous stage for ECR
+                        docker tag ${DOCKER_USER}/java-app:${BUILD_NUMBER} ${ECR_REGISTRY}/${REPO_NAME}:latest
                         
                         # 3. Push to ECR
-                        docker push ${ecrRegistry}/${repoName}:latest
-                        """
-                    }
+                        docker push ${ECR_REGISTRY}/${REPO_NAME}:latest
+                    """
                 }
             }
         }
@@ -74,7 +73,8 @@ pipeline {
     post {
         always {
             archiveArtifacts artifacts: 'target/*.jar', allowEmptyArchive: true
-            sh "docker logout ${ecrRegistry} || true"
+            // Use the environment variable to logout cleanly
+            sh "docker logout ${ECR_REGISTRY} || true"
             sh "docker logout || true"
         }
     }
