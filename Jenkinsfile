@@ -10,8 +10,9 @@ pipeline {
     triggers {
         pollSCM('* * * * *')
     }
- 
+
     stages {
+
         stage('Git Checkout') {   
             steps {
                 git url: 'https://github.com/soumya1312shekar/java.git', branch: 'main'
@@ -32,26 +33,22 @@ pipeline {
             }
         }
 
-        stage('Docker Pull & Push to ECR') {
-    steps {
-        sh """
-            # Pull the official image
-            docker pull nginx:1.25
-            
-            # Authenticate with AWS ECR
-            aws ecr get-login-password --region ap-south-1 | \
-            docker login --username AWS --password-stdin 271071982991.dkr.ecr.ap-south-1.amazonaws.com
-            
-            # Tag the image (Fixed typo: nginix -> nginx)
-            docker tag nginx:1.25 271071982991.dkr.ecr.ap-south-1.amazonaws.com/dev/spcimage:latest
-            
-            # Push to your private repo
-            docker push 271071982991.dkr.ecr.ap-south-1.amazonaws.com/dev/spcimage:latest
-        """
-    }
-}
+        stage('Build & Push to ECR') {
+            steps {
+                sh """
+                    aws ecr get-login-password --region ${REGION} | \
+                    docker login --username AWS --password-stdin ${ECR_REGISTRY}
 
-    
+                    docker build -t ${REPO_NAME} .
+
+                    docker tag ${REPO_NAME}:latest ${ECR_REGISTRY}/${REPO_NAME}:latest
+
+                    docker push ${ECR_REGISTRY}/${REPO_NAME}:latest
+                """
+            }
+        }
+    }
+
     post {
         always {
             archiveArtifacts artifacts: 'target/*.jar', allowEmptyArchive: true
