@@ -2,10 +2,9 @@ pipeline {
     agent { label 'spc' }
     
     environment {
-        // Updated to include the full URI for logout and tagging consistency
         ECR_REGISTRY = "271071982991.dkr.ecr.ap-south-1.amazonaws.com"
-        REPO_NAME = "dev/spcimage"
-        REGION = "ap-south-1"
+        REPO_NAME   = "dev/spcimage"
+        REGION      = "ap-south-1"
     }
     
     triggers {
@@ -33,22 +32,16 @@ pipeline {
             }
         }
 
-        stage('Docker Operations') {
-            steps {
-                sh """
-                    # Pulling Nginx
-                    docker pull nginx:1.25
-                    
-                    # ECR Login
-                    aws ecr get-login-password --region ${REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
-                    
-                    # Tag and Push
-                    docker tag ${REPO_NAME}:latest ${ECR_REGISTRY}/${REPO_NAME}:latest
-                    docker push ${ECR_REGISTRY}/${REPO_NAME}:latest
-                """
-            }
-        }
+      stage('docker image push to ecr and pulling from dockerhub') {
+    steps {
+        sh """
+        docker pull nginx:1.25
+        aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 271071982991.dkr.ecr.ap-south-1.amazonaws.com
+        docker nginix:1.25 271071982991.dkr.ecr.ap-south-1.amazonaws.com/dev/spcimage:latest
+        docker push 271071982991.dkr.ecr.ap-south-1.amazonaws.com/dev/spcimage:latest
+        """
     }
+}
     
     post {
         always {
