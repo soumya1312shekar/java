@@ -28,12 +28,23 @@ pipeline {
             }
         }
 
+        stage('Docker Pull and Scan') {
+            steps {
+                sh """
+                # 1. Pull the image
+                docker image pull nginx:1.25
+                
+                # 2. Run Trivy Scan
+                # --exit-code 1 will fail the pipeline if vulnerabilities are found
+                # --severity HIGH,CRITICAL focuses on the most dangerous issues
+                trivy image --severity HIGH,CRITICAL --exit-code 1 nginx:1.25
+                """
+            }
+        }
+
         stage('Docker Push to ECR') {
             steps {
                 sh """
-                # Pull the image from Docker Hub
-                docker image pull nginx:1.25
-                
                 # Login to AWS ECR
                 aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 271071982991.dkr.ecr.ap-south-1.amazonaws.com
                 
