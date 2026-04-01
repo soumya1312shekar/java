@@ -31,13 +31,13 @@ pipeline {
         stage('Docker Pull and Scan') {
             steps {
                 sh """
-                # 1. Pull the image
+                # Pull image from Docker Hub
                 docker image pull nginx:1.25
                 
-                # 2. Run Trivy Scan
-                # --exit-code 1 will fail the pipeline if vulnerabilities are found
-                # --severity HIGH,CRITICAL focuses on the most dangerous issues
-                trivy image --severity HIGH,CRITICAL --exit-code 1 nginx:1.25
+                # Run Trivy Scan using a Docker container
+                # The -v flag mounts the docker socket so Trivy can see local images
+                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+                aquasec/trivy:latest image --severity HIGH,CRITICAL --exit-code 1 nginx:1.25
                 """
             }
         }
@@ -48,7 +48,7 @@ pipeline {
                 # Login to AWS ECR
                 aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 271071982991.dkr.ecr.ap-south-1.amazonaws.com
                 
-                # Tag and Push
+                # Tag and Push to your ECR repo
                 docker tag nginx:1.25 271071982991.dkr.ecr.ap-south-1.amazonaws.com/dev/spcimage:latest
                 docker push 271071982991.dkr.ecr.ap-south-1.amazonaws.com/dev/spcimage:latest
                 """
@@ -60,6 +60,7 @@ pipeline {
         always {
             archiveArtifacts artifacts: '**/*.jar', allowEmptyArchive: true
             junit '**/surefire-reports/*.xml'
+            // Ensure logout from the specific registry
             sh "docker logout 271071982991.dkr.ecr.ap-south-1.amazonaws.com || true"
         }
     }
