@@ -8,17 +8,17 @@ pipeline {
     stages {
         stage('Git Checkout') {   
             steps {
-                // Fixed: Added comma after URL to prevent syntax errors
                 git url: 'https://github.com/soumya1312shekar/java.git', branch: 'main'
             }
         }
 
         stage('Build and Scan') {
             steps {
+                // Ensure 'sonar_sonar' ID exists in Jenkins Credentials
                 withCredentials([string(credentialsId: 'sonar_sonar', variable: 'SONAR_TOKEN')]) {
                     withSonarQubeEnv('SONAR') {
                         sh """
-                        mvn package sonar:sonar \
+                        mvn clean package sonar:sonar \
                         -Dsonar.projectKey=soumya1312shekar_java \
                         -Dsonar.organization=soumya1312shekar-1 \
                         -Dsonar.host.url=https://sonarcloud.io \
@@ -37,33 +37,37 @@ pipeline {
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
                     sh """
-                    echo ${DOCKER_PASS} | docker login -u ${DOCKER_USER} --password-stdin
-                    docker build -t ${DOCKER_USER}/java-app:${env.BUILD_ID} .
-                    docker push ${DOCKER_USER}/java-app:${env.BUILD_ID}
+                    echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
+                    docker build -t ${DOCKER_USER}/java-app:${BUILD_NUMBER} .
+                    docker push ${DOCKER_USER}/java-app:${BUILD_NUMBER}
                     """
                 }
             }
         }
 
-        stage('ECR Push and Hub Pull') {
+        stage('ECR Push') {
             steps {
-                sh """
-                docker image pull nginx:1.25
-                aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 271071982991.dkr.ecr.ap-south-1.amazonaws.com
-                
-                # Fixed: Removed '://' and added a repository name (e.g., /my-app)
-                docker tag nginx:1.25 ://271071982991.dkr.ecr.ap-south-1.amazonaws.com
-                docker push ://271071982991.dkr.ecr.ap-south-1.amazonaws.com
-                """
+                script {
+                    // Replace 'your-ecr-repo-name' with your actual ECR repository name
+                    def ecrRepo = "://amazonaws.com"
+                    
+                    sh """
+                    docker image pull nginx:1.25
+                    aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 271071982991.dkr.ecr.ap-south-1.amazonaws.com
+                    
+                    # Fixed: Correct tagging syntax (no :// and requires a repo path)
+                    docker tag nginx:1.25 ${ecrRepo}:latest
+                    docker push ${ecrRepo}:latest
+                    """
+                }
             }
         }
     }
 
     post {
         always {
-            // Added allowEmptyArchive to prevent failure if the build fails before JAR creation
-            archiveArtifacts artifacts: '**/*.jar', allowEmptyArchive: true
-            junit '**/surefire-reports/*.xml'
+            archiveArtifacts artifacts: 'target/*.jar', allowEmptyArchive: true
+            // junit '**/target/surefire-reports/*.xml' // Uncomment if you have tests
             sh "docker logout || true"
         }
     }
