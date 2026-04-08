@@ -1,0 +1,22 @@
+FROM maven:3.9.11-eclipse-temurin-25-noble AS build
+
+ADD . /app
+WORKDIR /app
+RUN pwd
+ RUN mvn package
+
+
+
+  FROM eclipse-temurin:25.0.1_8-jdk-noble AS runtime
+LABEL javaproject=spc
+LABEL author=devopsteam
+LABEL env=prod
+ARG usrname=devops
+ENV JAVA_HOME=/usr/lib/jvm/openjdk-25-jdk-amd64/bin
+ENV MAVEN_HOME=/usr/share/maven
+ RUN useradd -m -d /usr/share/${usrname} -s /bin/bash ${usrname}
+WORKDIR /home/novbatch/${usrname}
+  COPY --from=build /app/target/*.jar soumyashekar.jar
+  USER ${usrname}
+  EXPOSE 8080
+CMD ["java","-jar","soumyashekar.jar"]
